@@ -11,6 +11,7 @@ fn main() {
 
 fn report_projects() {
     let model = import::build_model();
+    dbg!(&model);
 }
 
 

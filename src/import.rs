@@ -7,6 +7,8 @@ use std::{io, fs};
 use std::fs::DirEntry;
 use walkdir::WalkDir;
 use std::path::Path;
+use util::parse;
+use std::collections::BTreeMap;
 
 const PC_MONSTER: &str = "Monster PC";
 const RUST_ROOT_MONSTER: &str = r"C:\Projects\Rust";
@@ -37,7 +39,6 @@ fn load_pc(pc: &mut PC) -> io::Result<()> {
 
             //bg!(&entry?);
             load_project(pc, entry?)
-
         }
     }
     Ok(())
@@ -59,12 +60,61 @@ fn load_project(pc: &mut PC, entry: DirEntry) {
             load_rust_project(&mut project, entry_recursive.path().parent().unwrap());
         }
     }
-    panic!();
+    //anic!();
 
-    pc.projects.push(project);
+    pc.add_project(project);
 }
 
 fn load_rust_project(project: &mut Project, path: &Path) {
-    dbg!(path);
+    //bg!(path);
+    let (name, mut dependencies) = parse_toml(&path);
+    let mut rust_project = RustProject::new(&name, path.to_str().unwrap());
+    dependencies.drain(..).for_each(|dependency| rust_project.add_dependency(dependency));
+    //bg!(&rust_project);
+    project.add_rust_project(rust_project);
+}
+
+fn parse_toml(path: &Path) -> (String, Vec<Dependency>) {
+    let mut dependencies = vec![];
+    let sections = parse::read_file_into_sections_by_line(path.join("Cargo.toml").to_str().unwrap(), "[", Some("]"));
+
+    // "package" section.
+    //bg!(file_path);
+    let rust_project_name = if let Some(section) = sections.get("package") {
+        let (name_value_pairs, _extra_lines) = parse::parse_name_value_pairs(section, "=", "#");
+        //bg!(&name_value_pairs, &extra_lines);
+        name_value_pairs.get("name").unwrap().clone()
+    } else {
+        // The Cargo.toml file has no "package" section so name the Rust project after the folder.
+        path.file_name().unwrap().to_str().unwrap().to_string()
+    };
+    dbg!(path, &rust_project_name);
+    //if rust_project_name.contains("conrod") {
+        //anic!();
+    //}
+
+    // "dependencies" section.
+    if let Some(lines) = sections.get("dependencies") {
+        let (name_value_pairs, extra_lines) = parse::parse_name_value_pairs(lines, "=", "#");
+        // assert!(extra_lines.is_empty());
+        //if !extra_lines.is_empty() {
+            //bg!(&extra_lines);
+            //anic!();
+        //}
+        for (name, value) in name_value_pairs.iter() {
+            let (version, is_local) = if value.starts_with("{") {
+                if value.contains("path") {
+                    (None, true)
+                } else {
+                    panic!("Unexpected [dependencies] value: \"{}\"", value);
+                }
+            } else {
+                (Some(value.to_string()), false)
+            };
+            dependencies.push(Dependency::new(name, version, is_local));
+        }
+    }
+
+    (rust_project_name, dependencies)
 }
 
