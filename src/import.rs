@@ -21,7 +21,7 @@ pub fn build_model() -> Model {
         PC::new(PC_MONSTER, RUST_ROOT_MONSTER),
         PC::new(PC_DAVID, RUST_ROOT_DAVID)];
     let mut model = Model::new(pcs);
-    for pc in model.pcs.iter_mut() {
+    for pc in model.pcs.values_mut() {
         load_pc(pc).unwrap();
     }
     model
@@ -47,12 +47,16 @@ fn load_pc(pc: &mut PC) -> io::Result<()> {
 fn load_project(pc: &mut PC, entry: DirEntry) {
     //dbg!(&project_path)
     // let project = Project::new()
-    dbg!(entry.file_name());
+    //bg!(entry.file_name());
     let path =  entry.path().to_str().unwrap().to_string();
     let name = entry.file_name().into_string().unwrap();
     assert!(!name.starts_with("."), "\".\" file found in supposed project folder \"{}\".", path);
 
-    let mut project = Project::new(&name, &name);
+    let mut project = Project::new(&name, &path);
+
+    load_repository(&mut project);
+
+    // Find all of the Rust projects by looking for "Cargo.toml".
     for entry_recursive in WalkDir::new(path) {
         //rintln!("{}", entry.unwrap().path().display());
         let entry_recursive = entry_recursive.unwrap();
@@ -63,6 +67,33 @@ fn load_project(pc: &mut PC, entry: DirEntry) {
     //anic!();
 
     pc.add_project(project);
+}
+
+fn load_repository(project: &mut Project) {
+    //bg!(&project);
+    let path_git = Path::new(&project.path).join(".git");
+    //bg!(&path_git);
+    if path_git.exists() {
+        let path_config = path_git.join("config");
+        //bg!(&path_config);
+        if path_config.exists() {
+            let sections = parse::read_file_into_sections_by_line(path_config.to_str().unwrap(), "[", Some("]"));
+            //bg!(&sections);
+            if let Some(lines) = sections.get("remote \"origin\"") {
+                let (name_value_pairs, _extra_lines) = parse::parse_name_value_pairs(lines, "=", None);
+                let url = name_value_pairs.get("url").unwrap();
+                let splits = url.split("/").collect::<Vec<_>>();
+                let owner = splits[3];
+                let name = parse::before(splits[4], ".git");
+                //bg!(&url, &splits, &owner, &name);
+                //if (project.name.eq_ignore_ascii_case("util")) {
+                    //anic!();
+                //}
+                assert!(project.repository.is_none());
+                project.repository = Some(Repository::new(owner, name, url));
+            }
+        }
+    }
 }
 
 fn load_rust_project(project: &mut Project, path: &Path) {
@@ -81,21 +112,21 @@ fn parse_toml(path: &Path) -> (String, Vec<Dependency>) {
     // "package" section.
     //bg!(file_path);
     let rust_project_name = if let Some(section) = sections.get("package") {
-        let (name_value_pairs, _extra_lines) = parse::parse_name_value_pairs(section, "=", "#");
+        let (name_value_pairs, _extra_lines) = parse::parse_name_value_pairs(section, "=", Some("#"));
         //bg!(&name_value_pairs, &extra_lines);
         name_value_pairs.get("name").unwrap().clone()
     } else {
         // The Cargo.toml file has no "package" section so name the Rust project after the folder.
         path.file_name().unwrap().to_str().unwrap().to_string()
     };
-    dbg!(path, &rust_project_name);
+    //bg!(path, &rust_project_name);
     //if rust_project_name.contains("conrod") {
         //anic!();
     //}
 
     // "dependencies" section.
     if let Some(lines) = sections.get("dependencies") {
-        let (name_value_pairs, extra_lines) = parse::parse_name_value_pairs(lines, "=", "#");
+        let (name_value_pairs, extra_lines) = parse::parse_name_value_pairs(lines, "=", Some("#"));
         // assert!(extra_lines.is_empty());
         //if !extra_lines.is_empty() {
             //bg!(&extra_lines);
