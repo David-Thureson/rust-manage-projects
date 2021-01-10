@@ -10,20 +10,31 @@ use std::path::Path;
 use util::parse;
 use std::collections::BTreeMap;
 
+const FILE_MODEL_SERIALIZED: &str = "Model.json";
+
 const PC_MONSTER: &str = "Monster PC";
 const RUST_ROOT_MONSTER: &str = r"C:\Projects\Rust";
 
 const PC_DAVID: &str = "David PC";
 const RUST_ROOT_DAVID: &str = r"T:\Projects\Rust";
 
-pub fn build_model() -> Model {
-    let pcs = vec![
-        PC::new(PC_MONSTER, RUST_ROOT_MONSTER),
-        PC::new(PC_DAVID, RUST_ROOT_DAVID)];
-    let mut model = Model::new(pcs);
-    for pc in model.pcs.values_mut() {
-        load_pc(pc).unwrap();
-    }
+pub fn build_model(force_rebuild: bool) -> Model {
+    let path_model = Path::new(FILE_MODEL_SERIALIZED);
+    let model = if force_rebuild || !path_model.exists() {
+        let pcs = vec![
+            PC::new(PC_MONSTER, RUST_ROOT_MONSTER),
+            PC::new(PC_DAVID, RUST_ROOT_DAVID)];
+        let mut model = Model::new(pcs);
+        for pc in model.pcs.values_mut() {
+            load_pc(pc).unwrap();
+        }
+        let json = serde_json::to_string(&model).unwrap();
+        fs::write(path_model, json);
+        model
+    } else {
+        let json = fs::read_to_string(path_model).unwrap();
+        serde_json::from_str(&json).unwrap()
+    };
     model
 }
 
@@ -125,6 +136,7 @@ fn parse_toml(path: &Path) -> (String, Vec<Dependency>) {
     //}
 
     // "dependencies" section.
+    //bg!(&path);
     if let Some(lines) = sections.get("dependencies") {
         let (name_value_pairs, extra_lines) = parse::parse_name_value_pairs(lines, "=", Some("#"));
         // assert!(extra_lines.is_empty());
@@ -133,11 +145,26 @@ fn parse_toml(path: &Path) -> (String, Vec<Dependency>) {
             //anic!();
         //}
         for (name, value) in name_value_pairs.iter() {
+            // if value.contains("utility") {
+                //bg!(&name, &value);
+                //anic!();
+            //}
             let (version, is_local) = if value.starts_with("{") {
                 if value.contains("path") {
                     (None, true)
                 } else {
-                    panic!("Unexpected [dependencies] value: \"{}\"", value);
+                    let inner = parse::remove_delimiters(value, "{", "}");
+                    let entries = inner
+                        .split(",")
+                        .map(|x| x.to_string())
+                        .collect::<Vec<_>>();
+                    let (inner_name_value_pairs, _extra_lines) = parse::parse_name_value_pairs(&entries, "=", None);
+                    if let Some(version) = inner_name_value_pairs.get("version") {
+                        (Some(version.to_string()), false)
+                    } else {
+                        (None, false)
+                    }
+                    //anic!("Unexpected [dependencies] value: \"{}\"", value);
                 }
             } else {
                 (Some(value.to_string()), false)

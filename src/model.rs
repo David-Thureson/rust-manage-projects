@@ -1,21 +1,22 @@
 use std::collections::BTreeMap;
 use std::path::Path;
+use serde::{Deserialize, Serialize};
 
 use util::group::Grouper;
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Model {
     pub pcs: BTreeMap<String, PC>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct PC {
     pub name: String,
     pub rust_root_folder: String,
     pub projects: BTreeMap<String, Project>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Project {
     pub name: String,
     pub path: String,
@@ -30,21 +31,21 @@ struct IDEProject {
 }
 */
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Repository {
     pub owner: String,
     pub name: String,
     pub url: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct RustProject {
     pub name: String,
     pub path: String,
     pub dependencies: BTreeMap<String, Dependency>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Dependency {
     pub crate_name: String,
     pub version: Option<String>,
@@ -86,11 +87,19 @@ impl Model {
                 }
             }
         }
-        grouper_pcs.print_by_count(0, None);
+        grouper_pcs.print_by_key(0, None);
         grouper_repo_owners.print_by_count(0, None);
-        grouper_rust_projects_per_project.print_by_count(0, None);
+        grouper_rust_projects_per_project.print_by_key(0, None);
         grouper_crates_local.print_by_count(0, None);
         grouper_crates.print_by_count(0, None);
+
+        /*
+        for project in self.pcs.values()
+            .flat_map(|pc| pc.projects.values())
+            .filter(|project| project.rust_projects.len() > 6) {
+            dbg!(&project);
+        }
+        */
     }
 }
 
