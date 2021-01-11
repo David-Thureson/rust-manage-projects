@@ -12,13 +12,16 @@ fn main() {
     dbg!(util::parse::unquote(&b));
     */
     report_projects();
+    // import::test_file_search_time();
+    // import::test_file_datetimes();
     println!("manage-projects: Done");
 }
 
 fn report_projects() {
-    let model = import::build_model(false);
+    let model = import::build_model(true);
     //bg!(&model);
     model.report_summary();
+    model.report_file_times();
 }
 
 

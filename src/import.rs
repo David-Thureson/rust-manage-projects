@@ -7,8 +7,9 @@ use std::{io, fs};
 use std::fs::DirEntry;
 use walkdir::WalkDir;
 use std::path::Path;
-use util::parse;
-use std::collections::BTreeMap;
+use util::{parse, format};
+use std::time::Instant;
+use itertools::Itertools;
 
 const FILE_MODEL_SERIALIZED: &str = "Model.json";
 
@@ -29,7 +30,7 @@ pub fn build_model(force_rebuild: bool) -> Model {
             load_pc(pc).unwrap();
         }
         let json = serde_json::to_string(&model).unwrap();
-        fs::write(path_model, json);
+        fs::write(path_model, json).ok();
         model
     } else {
         let json = fs::read_to_string(path_model).unwrap();
@@ -56,8 +57,6 @@ fn load_pc(pc: &mut PC) -> io::Result<()> {
 }
 
 fn load_project(pc: &mut PC, entry: DirEntry) {
-    //dbg!(&project_path)
-    // let project = Project::new()
     //bg!(entry.file_name());
     let path =  entry.path().to_str().unwrap().to_string();
     let name = entry.file_name().into_string().unwrap();
@@ -68,14 +67,34 @@ fn load_project(pc: &mut PC, entry: DirEntry) {
     load_repository(&mut project);
 
     // Find all of the Rust projects by looking for "Cargo.toml".
-    for entry_recursive in WalkDir::new(path) {
-        //rintln!("{}", entry.unwrap().path().display());
-        let entry_recursive = entry_recursive.unwrap();
-        if entry_recursive.file_name().eq_ignore_ascii_case("Cargo.toml") {
-            load_rust_project(&mut project, entry_recursive.path().parent().unwrap());
-        }
+    for entry_recursive in WalkDir::new(&path)
+        .into_iter()
+        .filter_entry(|entry| !entry.file_name().eq("target"))
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| entry.file_name().eq_ignore_ascii_case("Cargo.toml"))
+    {
+        load_rust_project(&mut project, entry_recursive.path().parent().unwrap());
     }
     //anic!();
+
+    // Find the first and last dates for Rust source files.
+    let (it1, it2) = WalkDir::new(&path)
+        .into_iter()
+        .filter_entry(|entry| !entry.file_name().eq("target"))
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| entry.file_name().to_str().unwrap().ends_with(".rs"))
+        .filter_map(|entry| entry.metadata().ok())
+        .tee();
+    //let first_time = it1.map(|entry| std::cmp::min(entry.created().unwrap(), entry.modified().unwrap()))
+    let first_time = it1.map(|entry| entry.modified().unwrap())
+        .min()
+        .unwrap();
+    // let last_time = it2.map(|entry| std::cmp::max(entry.created().unwrap(), entry.modified().unwrap()))
+    let last_time = it2.map(|entry| entry.modified().unwrap())
+        .max()
+        .unwrap();
+    project.first_systime = Some(first_time);
+    project.last_systime = Some(last_time);
 
     pc.add_project(project);
 }
@@ -176,3 +195,80 @@ fn parse_toml(path: &Path) -> (String, Vec<Dependency>) {
     (rust_project_name, dependencies)
 }
 
+pub fn test_file_search_time() {
+    let path = r"C:\Projects\Rust\console";
+
+    // Find all of the Rust projects by looking for "Cargo.toml" using WalkDir.
+    let mut found1 = vec![];
+    let start_time = Instant::now();
+    for entry_recursive in WalkDir::new(path) {
+        //rintln!("{}", entry.unwrap().path().display());
+        let entry_recursive = entry_recursive.unwrap();
+        if entry_recursive.file_name().eq_ignore_ascii_case("Cargo.toml") {
+            found1.push(entry_recursive.path().to_str().unwrap().to_string());
+        }
+    }
+    dbg!(Instant::now() - start_time);
+    dbg!(&found1);
+
+    let mut found2 = vec![];
+    let start_time = Instant::now();
+    for entry_recursive in WalkDir::new(path)
+        .into_iter()
+        .filter_entry(|entry| !entry.file_name().eq("target")) {
+
+        //rintln!("{}", entry.unwrap().path().display());
+        let entry_recursive = entry_recursive.unwrap();
+        if entry_recursive.file_name().eq_ignore_ascii_case("Cargo.toml") {
+            found2.push(entry_recursive.path().to_str().unwrap().to_string());
+        }
+    }
+    dbg!(Instant::now() - start_time);
+    dbg!(&found2);
+
+    let mut found3 = vec![];
+    let start_time = Instant::now();
+    for entry_recursive in WalkDir::new(path)
+        .into_iter()
+        .filter_entry(|entry| !entry.file_name().eq("target"))
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| entry.file_name().eq_ignore_ascii_case("Cargo.toml")) {
+
+        found3.push(entry_recursive.path().to_str().unwrap().to_string());
+    }
+    dbg!(Instant::now() - start_time);
+    dbg!(&found3);
+
+    // glob("**/*.png")
+
+    // let mut found2 = vec![];
+    // test_file_search_time_one(&mut found2, Path::new(path));
+
+}
+
+/*
+fn test_file_search_time_one(found: &mut Vec<String>, path: &Path) {
+    let path_cargo = path.join("Cargo.toml");
+    if path_cargo.exists() {
+        found.push(path_cargo.to_str().unwrap().to_string());
+    } else {
+        path.
+    }
+}
+*/
+
+pub fn test_file_datetimes() {
+    let path = r"C:\Projects\Rust\console\adder";
+    for entry in WalkDir::new(&path)
+        .into_iter()
+        .filter_entry(|entry| !entry.file_name().eq("target"))
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| entry.file_name().to_str().unwrap().ends_with(".rs")) {
+
+        let metadata = entry.metadata().unwrap();
+        println!("{}: c = {}; m = {}",
+                 entry.file_name().to_str().unwrap(),
+                 format::systemtime_as_date(&metadata.created().unwrap()),
+                 format::systemtime_as_date(&metadata.modified().unwrap()));
+    }
+}

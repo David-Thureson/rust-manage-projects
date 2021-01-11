@@ -1,8 +1,10 @@
 use std::collections::BTreeMap;
-use std::path::Path;
 use serde::{Deserialize, Serialize};
+use std::time::SystemTime;
+use chrono::{DateTime, Local};
 
 use util::group::Grouper;
+use util::format;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Model {
@@ -21,6 +23,8 @@ pub struct Project {
     pub name: String,
     pub path: String,
     pub repository: Option<Repository>,
+    pub first_systime: Option<SystemTime>,
+    pub last_systime: Option<SystemTime>,
     pub rust_projects: BTreeMap<String, RustProject>,
 }
 
@@ -101,6 +105,31 @@ impl Model {
         }
         */
     }
+
+    pub fn report_file_times(&self) {
+        let mut project_names = self.pcs
+            .values()
+            .flat_map(|pc| pc.projects.keys())
+            .collect::<Vec<_>>();
+        project_names.sort();
+        project_names.dedup();
+
+        for project_name in project_names {
+            println!();
+            for project in self.pcs
+                .values()
+                .flat_map(|pc| pc.projects.get(project_name)) {
+                // .filter_map(|project| project.ok()) {
+
+                println!("{}: {} to {}: {}",
+                         project.name,
+                         format::datetime_as_date(&project.first_time()),
+                         format::datetime_as_date(&project.last_time()),
+                         project.path);
+            }
+
+         }
+    }
 }
 
 impl PC {
@@ -125,8 +154,17 @@ impl Project {
             name: name.to_string(),
             path: path.to_string(),
             repository: None,
+            first_systime: None,
+            last_systime: None,
             rust_projects: BTreeMap::new(),
         }
+    }
+    pub fn first_time(&self) -> DateTime<Local> {
+        DateTime::<Local>::from(self.first_systime.unwrap())
+    }
+
+    pub fn last_time(&self) -> DateTime<Local> {
+        DateTime::<Local>::from(self.last_systime.unwrap())
     }
 
     pub fn add_rust_project(&mut self, rust_project: RustProject) {
