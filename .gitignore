@@ -11,3 +11,6 @@ Cargo.lock
 # Intellij IDEA
 /.idea/
 *.iml
+
+# JSON is used for serializing the built Model object to save time.
+*.json

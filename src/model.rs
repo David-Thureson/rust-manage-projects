@@ -119,13 +119,17 @@ impl Model {
             for project in self.pcs
                 .values()
                 .flat_map(|pc| pc.projects.get(project_name)) {
-                // .filter_map(|project| project.ok()) {
+                //.filter(|project| project.is_some())
+                //.map(|project| project.unwrap()) {
 
-                println!("{}: {} to {}: {}",
-                         project.name,
-                         format::datetime_as_date(&project.first_time()),
-                         format::datetime_as_date(&project.last_time()),
-                         project.path);
+                let repository = project.repository.as_ref().map_or("".to_string(), |repo| format!(" [{} / {}]", repo.owner, repo.name));
+
+                println!("{}: {} to {}: {}{}",
+                    project.name,
+                    format::datetime_as_date(&project.first_time()),
+                    format::datetime_as_date(&project.last_time()),
+                    project.path,
+                    repository);
             }
 
          }
@@ -168,6 +172,7 @@ impl Project {
     }
 
     pub fn add_rust_project(&mut self, rust_project: RustProject) {
+        //bg!(&rust_project);
         let key = rust_project.name.to_lowercase();
         assert!(!self.rust_projects.contains_key(&key));
         self.rust_projects.insert(key, rust_project);

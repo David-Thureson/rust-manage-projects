@@ -16,15 +16,15 @@ const FILE_MODEL_SERIALIZED: &str = "Model.json";
 const PC_MONSTER: &str = "Monster PC";
 const RUST_ROOT_MONSTER: &str = r"C:\Projects\Rust";
 
-const PC_DAVID: &str = "David PC";
-const RUST_ROOT_DAVID: &str = r"T:\Projects\Rust";
+// const PC_DAVID: &str = "David PC";
+// const RUST_ROOT_DAVID: &str = r"T:\Projects\Rust";
 
 pub fn build_model(force_rebuild: bool) -> Model {
     let path_model = Path::new(FILE_MODEL_SERIALIZED);
     let model = if force_rebuild || !path_model.exists() {
         let pcs = vec![
-            PC::new(PC_MONSTER, RUST_ROOT_MONSTER),
-            PC::new(PC_DAVID, RUST_ROOT_DAVID)];
+            PC::new(PC_MONSTER, RUST_ROOT_MONSTER)];
+            // PC::new(PC_DAVID, RUST_ROOT_DAVID)];
         let mut model = Model::new(pcs);
         for pc in model.pcs.values_mut() {
             load_pc(pc).unwrap();
@@ -82,10 +82,15 @@ fn load_project(pc: &mut PC, entry: DirEntry) {
         .into_iter()
         .filter_entry(|entry| !entry.file_name().eq("target"))
         .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.file_name().to_str().unwrap().ends_with(".rs"))
+        .filter(|entry| {
+            let file_name = entry.file_name().to_str().unwrap();
+            //rintln!("{}", file_name);
+            file_name.ends_with(".rs") || file_name.ends_with(".toml")
+        })
         .filter_map(|entry| entry.metadata().ok())
         .tee();
     //let first_time = it1.map(|entry| std::cmp::min(entry.created().unwrap(), entry.modified().unwrap()))
+    //bg!(&path);
     let first_time = it1.map(|entry| entry.modified().unwrap())
         .min()
         .unwrap();
