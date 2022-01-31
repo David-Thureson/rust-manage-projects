@@ -4,7 +4,7 @@ use std::time::SystemTime;
 use chrono::{DateTime, Local};
 
 use util::group::Grouper;
-use util::format;
+use util::date_time;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Model {
@@ -126,8 +126,8 @@ impl Model {
 
                 println!("{}: {} to {}: {}{}",
                     project.name,
-                    format::datetime_as_date(&project.first_time()),
-                    format::datetime_as_date(&project.last_time()),
+                    date_time::datetime_as_date(&project.first_time()),
+                    date_time::datetime_as_date(&project.last_time()),
                     project.path,
                     repository);
             }

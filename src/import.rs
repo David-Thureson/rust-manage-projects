@@ -7,7 +7,7 @@ use std::{io, fs};
 use std::fs::DirEntry;
 use walkdir::WalkDir;
 use std::path::Path;
-use util::{parse, format};
+use util::{parse, date_time};
 use std::time::Instant;
 use itertools::Itertools;
 
@@ -273,7 +273,7 @@ pub fn test_file_datetimes() {
         let metadata = entry.metadata().unwrap();
         println!("{}: c = {}; m = {}",
                  entry.file_name().to_str().unwrap(),
-                 format::systemtime_as_date(&metadata.created().unwrap()),
-                 format::systemtime_as_date(&metadata.modified().unwrap()));
+                 date_time::systemtime_as_date(&metadata.created().unwrap()),
+                 date_time::systemtime_as_date(&metadata.modified().unwrap()));
     }
 }
