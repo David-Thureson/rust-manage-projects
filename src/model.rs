@@ -5,6 +5,7 @@ use chrono::{DateTime, Local};
 
 use util::group::Grouper;
 use util::date_time;
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Model {
@@ -49,7 +50,7 @@ pub struct RustProject {
     pub dependencies: BTreeMap<String, Dependency>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Dependency {
     pub crate_name: String,
     pub version: Option<String>,
@@ -214,3 +215,12 @@ impl Dependency {
         }
     }
 }
+
+impl Display for Dependency {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        let version = self.version.as_ref().map_or("".to_string(), |version| format!(" {}", version));
+        let is_local = if self.is_local { " (local)" } else { "" };
+        write!(f, "{}{}{}", self.crate_name, version, is_local)
+    }
+}
+
