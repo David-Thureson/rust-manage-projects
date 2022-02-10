@@ -7,19 +7,19 @@ use util::group::Grouper;
 use util::date_time;
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Model {
     pub pcs: BTreeMap<String, PC>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PC {
     pub name: String,
     pub rust_root_folder: String,
     pub projects: BTreeMap<String, Project>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Project {
     pub name: String,
     pub path: String,
@@ -36,14 +36,14 @@ struct IDEProject {
 }
 */
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Repository {
     pub owner: String,
     pub name: String,
     pub url: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct RustProject {
     pub name: String,
     pub path: String,
